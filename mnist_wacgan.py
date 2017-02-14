@@ -1,14 +1,18 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Train an Wasserstein Auxiliary Classifier Generative Adversarial Network (WACGAN) on the MNIST dataset. 
-See https://arxiv.org/abs/1610.09585 for more details about ACGAN. 
-See https://arxiv.org/abs/1701.07875 for more details about WACGAN.
+Train an Wasserstein Auxiliary Classifier Generative Adversarial Network
+(WACGAN) on the MNIST dataset.
+See https://arxiv.org/abs/1610.09585 for more details about ACGAN.
+See https://arxiv.org/abs/1701.07875 for more details about WGAN.
 
-You should start to see reasonable images after ~3 epochs. 
-According to the paper, the performance is highly related to the discriminator loss.
-You should use a GPU, as the convolution-heavy operations are very slow on the CPU. 
-Prefer the TensorFlow backend if you plan on iterating, as the compilation time can be a blocker using Theano.
+You should start to see reasonable images after ~3 epochs.
+According to the paper, the performance is highly related
+to the discriminator loss.
+You should use a GPU, as the convolution-heavy operations
+are very slow on the CPU.
+Prefer the TensorFlow backend if you plan on iterating,
+as the compilation time can be a blocker using Theano.
 
 Timings:
 
@@ -18,9 +22,10 @@ Hardware           | Backend | Time / Epoch
  Titan X (maxwell) | TF      | 4 min
  Titan X (maxwell) | TH      | 7 min
 
-Consult https://github.com/bobchennan/Wasserstein-GAN-Keras for more information and
-example output
-The original ACGAN implementation can be found in https://github.com/lukedeo/keras-acgan
+Consult https://github.com/bobchennan/Wasserstein-GAN-Keras for
+more information and example output
+The original ACGAN implementation can be found in
+https://github.com/lukedeo/keras-acgan
 More tricks to train GAN can be found in https://github.com/soumith/ganhacks
 """
 from __future__ import print_function
@@ -36,7 +41,8 @@ from six.moves import range
 
 import keras.backend as K
 from keras.datasets import mnist
-from keras.layers import Input, Dense, Reshape, Flatten, Embedding, merge, Dropout
+from keras.layers import Input, Dense, Reshape, Flatten
+from keras.layers import Dropout, Embedding, merge
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import UpSampling2D, Convolution2D
 from keras.layers.noise import GaussianNoise
@@ -49,10 +55,11 @@ import numpy as np
 np.random.seed(1331)
 
 K.set_image_dim_ordering('th')
-def modified_binary_crossentropy(target, output):
-    #output = K.clip(output, _EPSILON, 1.0 - _EPSILON)
-    #return -(target * output + (1.0 - target) * (1.0 - output))
-    return K.mean(target*output)
+
+
+def wasserstein_loss(target, output):
+    return K.mean(target * output)
+
 
 def build_generator(latent_size):
     # we will map a pair of (z, L), where z is a latent vector and L is a
@@ -98,6 +105,7 @@ def build_generator(latent_size):
 
     return Model(input=[latent, image_class], output=fake_image)
 
+
 def build_discriminator():
     # build a relatively standard conv net, with LeakyReLUs as suggested in
     # the reference paper
@@ -142,20 +150,16 @@ if __name__ == '__main__':
     batch_size = 100
     latent_size = 100
 
-    # Adam parameters suggested in https://arxiv.org/abs/1511.06434
-    adam_lr = 0.0002
-    adam_beta_1 = 0.5
-
     # build the discriminator
     discriminator = build_discriminator()
     discriminator.compile(
-        optimizer=SGD(clipvalue=0.01),#Adam(lr=adam_lr, beta_1=adam_beta_1),
-        loss=[modified_binary_crossentropy, 'sparse_categorical_crossentropy']
+        optimizer=SGD(clipvalue=0.01),
+        loss=[wasserstein_loss, 'sparse_categorical_crossentropy']
     )
 
     # build the generator
     generator = build_generator(latent_size)
-    generator.compile(optimizer=Adam(lr=adam_lr, beta_1=adam_beta_1),
+    generator.compile(optimizer='RMSprop',
                       loss='binary_crossentropy')
 
     latent = Input(shape=(latent_size, ))
@@ -171,7 +175,7 @@ if __name__ == '__main__':
 
     combined.compile(
         optimizer='RMSprop',
-        loss=[modified_binary_crossentropy, 'sparse_categorical_crossentropy']
+        loss=[wasserstein_loss, 'sparse_categorical_crossentropy']
     )
 
     # get our mnist data, and force it to be of shape (..., 1, 28, 28) with
@@ -199,11 +203,15 @@ if __name__ == '__main__':
 
         for index in range(nb_batches):
             if len(epoch_gen_loss) + len(epoch_disc_loss) > 1:
-                progress_bar.update(index, values=[('disc_loss',np.mean(np.array(epoch_disc_loss),axis=0)[0]), ('gen_loss', np.mean(np.array(epoch_gen_loss),axis=0)[0])])
+                cur_res = [('disc_loss',
+                            np.mean(epoch_disc_loss, 0)[0]),
+                           ('gen_loss',
+                            np.mean(epoch_gen_loss, 0)[0])]
+                progress_bar.update(index,
+                                    values=cur_res)
             else:
                 progress_bar.update(index)
             # generate a new batch of noise
-            #noise = np.random.uniform(-1, 1, (batch_size, latent_size))
             noise = np.random.normal(0, 1, (batch_size, latent_size))
 
             # get a batch of real images
@@ -230,9 +238,9 @@ if __name__ == '__main__':
             # make new noise. we generate 2 * batch size here such that we have
             # the generator optimize over an identical number of images as the
             # discriminator
-            #noise = np.random.uniform(-1, 1, (2 * batch_size, latent_size))
             noise = np.random.normal(0, 1, (2 * batch_size, latent_size))
             sampled_labels = np.random.randint(0, 10, 2 * batch_size)
+            sampled_labels = sampled_labels.reshape((-1, 1))
 
             # we want to train the genrator to trick the discriminator
             # For the generator, we want all the {fake, not-fake} labels to say
@@ -240,14 +248,13 @@ if __name__ == '__main__':
             trick = -np.ones(2 * batch_size)
 
             epoch_gen_loss.append(combined.train_on_batch(
-                [noise, sampled_labels.reshape((-1, 1))], [trick, sampled_labels]))
+                [noise, sampled_labels], [trick, sampled_labels]))
 
         print('\nTesting for epoch {}:'.format(epoch + 1))
 
         # evaluate the testing loss here
 
         # generate a new batch of noise
-        #noise = np.random.uniform(-1, 1, (nb_test, latent_size))
         noise = np.random.normal(0, 1, (nb_test, latent_size))
 
         # sample some labels from p_c and generate images from them
@@ -266,7 +273,6 @@ if __name__ == '__main__':
         discriminator_train_loss = np.mean(np.array(epoch_disc_loss), axis=0)
 
         # make new noise
-        #noise = np.random.uniform(-1, 1, (2 * nb_test, latent_size))
         noise = np.random.normal(0, 1, (2 * nb_test, latent_size))
         sampled_labels = np.random.randint(0, 10, 2 * nb_test)
 
@@ -305,7 +311,6 @@ if __name__ == '__main__':
             'params_discriminator_epoch_{0:03d}.hdf5'.format(epoch), True)
 
         # generate some digits to display
-        #noise = np.random.uniform(-1, 1, (100, latent_size))
         noise = np.random.normal(-1, 1, (100, latent_size))
 
         sampled_labels = np.array([
