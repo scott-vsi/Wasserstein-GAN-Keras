@@ -47,8 +47,7 @@ from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import UpSampling2D, Convolution2D
 from keras.layers.noise import GaussianNoise
 from keras.models import Sequential, Model
-from keras.optimizers import Adam, SGD
-from keras.backend.common import _EPSILON
+from keras.optimizers import SGD
 from keras.utils.generic_utils import Progbar
 import numpy as np
 
