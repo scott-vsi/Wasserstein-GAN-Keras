@@ -49,6 +49,7 @@ from keras.layers.noise import GaussianNoise
 from keras.models import Sequential, Model
 from keras.optimizers import SGD
 from keras.utils.generic_utils import Progbar
+from keras_contrib.constraints import Clip
 import numpy as np
 
 np.random.seed(1331)
@@ -111,19 +112,22 @@ def build_discriminator():
     cnn = Sequential()
     #cnn.add(GaussianNoise(0.2, input_shape=(1, 28, 28)))
     cnn.add(Convolution2D(32, 3, 3, border_mode='same', subsample=(2, 2),
-                          input_shape=(1, 28, 28)))
+                          input_shape=(1, 28, 28), W_constraint=Clip(0.01)))
     cnn.add(LeakyReLU())
     cnn.add(Dropout(0.3))
 
-    cnn.add(Convolution2D(64, 3, 3, border_mode='same', subsample=(1, 1)))
+    cnn.add(Convolution2D(64, 3, 3, border_mode='same', subsample=(1, 1),
+                          W_constraint=Clip(0.01)))
     cnn.add(LeakyReLU())
     cnn.add(Dropout(0.3))
 
-    cnn.add(Convolution2D(128, 3, 3, border_mode='same', subsample=(2, 2)))
+    cnn.add(Convolution2D(128, 3, 3, border_mode='same', subsample=(2, 2),
+                          W_constraint=Clip(0.01)))
     cnn.add(LeakyReLU())
     cnn.add(Dropout(0.3))
 
-    cnn.add(Convolution2D(256, 3, 3, border_mode='same', subsample=(1, 1)))
+    cnn.add(Convolution2D(256, 3, 3, border_mode='same', subsample=(1, 1),
+                          W_constraint=Clip(0.01)))
     cnn.add(LeakyReLU())
     cnn.add(Dropout(0.3))
 
@@ -152,7 +156,7 @@ if __name__ == '__main__':
     # build the discriminator
     discriminator = build_discriminator()
     discriminator.compile(
-        optimizer=SGD(clipvalue=0.01),
+        optimizer=SGD(),
         loss=[wasserstein_loss, 'sparse_categorical_crossentropy']
     )
 
