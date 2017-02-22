@@ -157,13 +157,13 @@ if __name__ == '__main__':
     # build the discriminator
     discriminator = build_discriminator()
     discriminator.compile(
-        optimizer='RMSprop',
+        optimizer=RMSprop(lr=0.00005),
         loss=[wasserstein_loss, 'sparse_categorical_crossentropy']
     )
 
     # build the generator
     generator = build_generator(latent_size)
-    generator.compile(optimizer='RMSprop',
+    generator.compile(optimizer=RMSprop(lr=0.00005),
                       loss='binary_crossentropy')
 
     latent = Input(shape=(latent_size, ))
@@ -178,7 +178,7 @@ if __name__ == '__main__':
     combined = Model(input=[latent, image_class], output=[fake, aux])
 
     combined.compile(
-        optimizer='RMSprop',
+        optimizer=RMSprop(lr=0.00005),
         loss=[wasserstein_loss, 'sparse_categorical_crossentropy']
     )
 
