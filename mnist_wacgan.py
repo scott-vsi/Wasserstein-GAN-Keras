@@ -153,6 +153,7 @@ if __name__ == '__main__':
     nb_epochs = 50
     batch_size = 100
     latent_size = 100
+    ncritic_updates = 5
 
     # build the discriminator
     discriminator = build_discriminator()
@@ -205,39 +206,48 @@ if __name__ == '__main__':
         epoch_gen_loss = []
         epoch_disc_loss = []
 
-        for index in range(nb_batches):
+        index_generator = 0
+        index_batch = 0
+        while index_batch < nb_batches:
             if len(epoch_gen_loss) + len(epoch_disc_loss) > 1:
                 cur_res = [('disc_loss',
                             np.mean(epoch_disc_loss, 0)[0]),
                            ('gen_loss',
                             np.mean(epoch_gen_loss, 0)[0])]
-                progress_bar.update(index,
+                progress_bar.update(index_batch,
                                     values=cur_res)
             else:
-                progress_bar.update(index)
-            # generate a new batch of noise
-            noise = np.random.normal(0, 1, (batch_size, latent_size))
+                progress_bar.update(index_batch)
 
-            # get a batch of real images
-            image_batch = X_train[index * batch_size:(index + 1) * batch_size]
-            label_batch = y_train[index * batch_size:(index + 1) * batch_size]
+            # train the discriminator Diters times
+            Diters = 100 if index_generator < 25 or index_generator % 500 == 0 else ncritic_updates
+            for _ in range(Diters):
+                if not index_batch < nb_batches: break
 
-            # sample some labels from p_c
-            sampled_labels = np.random.randint(0, 10, batch_size)
+                # generate a new batch of noise
+                noise = np.random.normal(0, 1, (batch_size, latent_size))
 
-            # generate a batch of fake images, using the generated labels as a
-            # conditioner. We reshape the sampled labels to be
-            # (batch_size, 1) so that we can feed them into the embedding
-            # layer as a length one sequence
-            generated_images = generator.predict(
-                [noise, sampled_labels.reshape((-1, 1))], verbose=0)
+                # get a batch of real images
+                image_batch = X_train[index_batch * batch_size:(index_batch + 1) * batch_size]
+                label_batch = y_train[index_batch * batch_size:(index_batch + 1) * batch_size]
 
-            X = np.concatenate((image_batch, generated_images))
-            y = np.array([-1] * batch_size + [1] * batch_size)
-            aux_y = np.concatenate((label_batch, sampled_labels), axis=0)
+                # sample some labels from p_c
+                sampled_labels = np.random.randint(0, 10, batch_size)
 
-            # see if the discriminator can figure itself out...
-            epoch_disc_loss.append(discriminator.train_on_batch(X, [y, aux_y]))
+                # generate a batch of fake images, using the generated labels as a
+                # conditioner. We reshape the sampled labels to be
+                # (batch_size, 1) so that we can feed them into the embedding
+                # layer as a length one sequence
+                generated_images = generator.predict(
+                    [noise, sampled_labels.reshape((-1, 1))], verbose=0)
+
+                X = np.concatenate((image_batch, generated_images))
+                y = np.array([-1] * batch_size + [1] * batch_size)
+                aux_y = np.concatenate((label_batch, sampled_labels), axis=0)
+
+                # see if the discriminator can figure itself out...
+                epoch_disc_loss.append(discriminator.train_on_batch(X, [y, aux_y]))
+                index_batch += 1
 
             # make new noise. we generate 2 * batch size here such that we have
             # the generator optimize over an identical number of images as the
@@ -253,6 +263,7 @@ if __name__ == '__main__':
 
             epoch_gen_loss.append(combined.train_on_batch(
                 [noise, sampled_labels], [trick, sampled_labels]))
+            index_generator += 1
 
         print('\nTesting for epoch {}:'.format(epoch + 1))
 
