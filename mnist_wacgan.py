@@ -47,7 +47,7 @@ from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import UpSampling2D, Convolution2D
 from keras.layers.noise import GaussianNoise
 from keras.models import Sequential, Model
-from keras.optimizers import SGD
+from keras.optimizers import SGD, RMSprop
 from keras.utils.generic_utils import Progbar
 from keras_contrib.constraints import Clip
 import numpy as np
@@ -157,7 +157,7 @@ if __name__ == '__main__':
     # build the discriminator
     discriminator = build_discriminator()
     discriminator.compile(
-        optimizer=SGD(),
+        optimizer='RMSprop',
         loss=[wasserstein_loss, 'sparse_categorical_crossentropy']
     )
 
