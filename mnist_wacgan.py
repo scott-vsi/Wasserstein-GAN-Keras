@@ -38,6 +38,7 @@ except ImportError:
 from PIL import Image
 
 from six.moves import range
+import argparse
 
 import keras.backend as K
 from keras.datasets import mnist
@@ -148,23 +149,31 @@ def build_discriminator():
     return Model(input=image, output=[fake, aux])
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--nb_epochs', type=int, help='number of training epochs, default=50', default=50)
+    parser.add_argument('--batch_size', type=int, help='number of images per batch, default=100', default=100)
+    parser.add_argument('--latent_size', type=int, help='size of the latent z vector, default=100', default=100)
+    parser.add_argument('--ncritic_updates', type=int, help='number of critic updates per generator update, default=5', default=5)
+    parser.add_argument('--lr', type=float, help='learning rate (RMSprop), default=0.00005', default=0.00005)
+    opt = parser.parse_args()
 
     # batch and latent size taken from the paper
-    nb_epochs = 50
-    batch_size = 100
-    latent_size = 100
-    ncritic_updates = 5
+    nb_epochs = opt.nb_epochs
+    batch_size = opt.batch_size
+    latent_size = opt.latent_size
+    ncritic_updates = opt.ncritic_updates
+    lr = opt.lr
 
     # build the discriminator
     discriminator = build_discriminator()
     discriminator.compile(
-        optimizer=RMSprop(lr=0.00005),
+        optimizer=RMSprop(lr=lr),
         loss=[wasserstein_loss, 'sparse_categorical_crossentropy']
     )
 
     # build the generator
     generator = build_generator(latent_size)
-    generator.compile(optimizer=RMSprop(lr=0.00005),
+    generator.compile(optimizer=RMSprop(lr=lr),
                       loss='binary_crossentropy')
 
     latent = Input(shape=(latent_size, ))
@@ -179,7 +188,7 @@ if __name__ == '__main__':
     combined = Model(input=[latent, image_class], output=[fake, aux])
 
     combined.compile(
-        optimizer=RMSprop(lr=0.00005),
+        optimizer=RMSprop(lr=lr),
         loss=[wasserstein_loss, 'sparse_categorical_crossentropy']
     )
 
