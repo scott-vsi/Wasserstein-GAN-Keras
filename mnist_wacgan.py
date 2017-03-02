@@ -114,22 +114,22 @@ def build_discriminator():
     #cnn.add(GaussianNoise(0.2, input_shape=(1, 28, 28)))
     cnn.add(Convolution2D(32, 3, 3, border_mode='same', subsample=(2, 2),
                           input_shape=(1, 28, 28), 
-                          b_constraint=Clip(0.01), W_constraint=Clip(0.01)))
+                          bias=False, W_constraint=Clip(0.01)))
     cnn.add(LeakyReLU())
     cnn.add(Dropout(0.3))
 
     cnn.add(Convolution2D(64, 3, 3, border_mode='same', subsample=(1, 1),
-                          b_constraint=Clip(0.01), W_constraint=Clip(0.01)))
+                          bias=False, W_constraint=Clip(0.01)))
     cnn.add(LeakyReLU())
     cnn.add(Dropout(0.3))
 
     cnn.add(Convolution2D(128, 3, 3, border_mode='same', subsample=(2, 2),
-                          b_constraint=Clip(0.01), W_constraint=Clip(0.01)))
+                          bias=False, W_constraint=Clip(0.01)))
     cnn.add(LeakyReLU())
     cnn.add(Dropout(0.3))
 
     cnn.add(Convolution2D(256, 3, 3, border_mode='same', subsample=(1, 1),
-                          b_constraint=Clip(0.01), W_constraint=Clip(0.01)))
+                          bias=False, W_constraint=Clip(0.01)))
     cnn.add(LeakyReLU())
     cnn.add(Dropout(0.3))
 
