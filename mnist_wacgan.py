@@ -44,6 +44,7 @@ import keras.backend as K
 from keras.datasets import mnist
 from keras.layers import Input, Dense, Reshape, Flatten
 from keras.layers import Dropout, Embedding, merge
+from keras.layers.normalization import BatchNormalization
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import UpSampling2D, Convolution2D
 from keras.layers.noise import GaussianNoise
@@ -77,12 +78,14 @@ def build_generator(latent_size):
     cnn.add(UpSampling2D(size=(2, 2)))
     cnn.add(Convolution2D(256, 5, 5, border_mode='same',
                           init='glorot_uniform'))
+    cnn.add(BatchNormalization(axis=1)) # set axis to normalize per feature map (channels axis)
     cnn.add(LeakyReLU())
 
     # upsample to (..., 28, 28)
     cnn.add(UpSampling2D(size=(2, 2)))
     cnn.add(Convolution2D(128, 5, 5, border_mode='same',
                           init='glorot_uniform'))
+    cnn.add(BatchNormalization(axis=1)) # set axis to normalize per feature map (channels axis)
     cnn.add(LeakyReLU())
 
     # take a channel axis reduction
@@ -120,16 +123,19 @@ def build_discriminator():
 
     cnn.add(Convolution2D(64, 3, 3, border_mode='same', subsample=(1, 1),
                           bias=False, W_constraint=Clip(0.01)))
+    cnn.add(BatchNormalization(axis=1)) # set axis to normalize per feature map (channels axis)
     cnn.add(LeakyReLU())
     cnn.add(Dropout(0.3))
 
     cnn.add(Convolution2D(128, 3, 3, border_mode='same', subsample=(2, 2),
                           bias=False, W_constraint=Clip(0.01)))
+    cnn.add(BatchNormalization(axis=1)) # set axis to normalize per feature map (channels axis)
     cnn.add(LeakyReLU())
     cnn.add(Dropout(0.3))
 
     cnn.add(Convolution2D(256, 3, 3, border_mode='same', subsample=(1, 1),
                           bias=False, W_constraint=Clip(0.01)))
+    cnn.add(BatchNormalization(axis=1)) # set axis to normalize per feature map (channels axis)
     cnn.add(LeakyReLU())
     cnn.add(Dropout(0.3))
 
